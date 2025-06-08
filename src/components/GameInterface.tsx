@@ -335,7 +335,7 @@ export const GameInterface = () => {
 
     const currentLevelExp = expTable[(currentLevel - 1).toString()] || 0;
     const nextLevelExp =
-        expTable[currentLevel.toString()] || currentLevelExp + 1;
+        expTable[currentLevel.toString()] || 100;
 
     const expRange = nextLevelExp - currentLevelExp;
     const expIntoLevel = exp - currentLevelExp;
