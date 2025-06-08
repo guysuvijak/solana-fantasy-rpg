@@ -1,0 +1,27 @@
+{
+    "name": "Fantasy RPG Characters",
+    "symbol": "FANTASY",
+    "description": "Official collection of Fantasy RPG character NFTs. Each NFT represents a unique adventurer in the Solana-based GameFi world.",
+    "image": "https://solana-fantasy-rpg.vercel.app/assets/collection-logo.png",
+    "external_url": "https://solana-fantasy-rpg.vercel.app",
+    "seller_fee_basis_points": 0,
+    "attributes": [
+        {
+            "trait_type": "Game",
+            "value": "Fantasy RPG"
+        },
+        {
+            "trait_type": "Collection Type",
+            "value": "Character"
+        }
+    ],
+    "properties": {
+        "category": "image",
+        "files": [
+            {
+                "uri": "https://solana-fantasy-rpg.vercel.app/assets/collection-logo.png",
+                "type": "image/png"
+            }
+        ]
+    }
+}
