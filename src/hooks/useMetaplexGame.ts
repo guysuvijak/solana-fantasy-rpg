@@ -13,17 +13,20 @@ import {
     fetchCollection
 } from '@metaplex-foundation/mpl-core';
 import {
+    TransactionBuilderSendAndConfirmOptions,
     createSignerFromKeypair,
     generateSigner,
     publicKey,
     some,
-    transactionBuilder
+    signerIdentity
 } from '@metaplex-foundation/umi';
 import { PlayerData, Monster, MONSTERS } from '../types/game';
+import { clusterApiUrl } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 const COLLECTION_NAME = import.meta.env.VITE_COLLECTION_NAME;
 const COLLECTION_ADDRESS = import.meta.env.VITE_COLLECTION_ADDRESS;
+const SIGNER_KEY = import.meta.env.VITE_SIGNER_KEY;
 const SIGNER_ADDRESS = import.meta.env.VITE_SIGNER_ADDRESS;
 
 export const useMetaplexGame = () => {
@@ -42,20 +45,26 @@ export const useMetaplexGame = () => {
         if (!wallet || !wallet.adapter?.connected) {
             throw new Error('Wallet not connected properly.');
         }
-        const umi = createUmi(connection.rpcEndpoint)
+        const umi = createUmi(clusterApiUrl('devnet'))
             .use(walletAdapterIdentity(wallet?.adapter))
-            .use(mplCore());
+            .use(mplCore())
+
         return umi;
     }, [connection, walletPublicKey]);
 
     const getSigner = () => {
         const umi = getUmi();
         if (!umi) throw new Error('Umi not initialized');
+        const secret1 = new Uint8Array(Buffer.from(SIGNER_KEY, 'base64'));
+        const myKeypair1 = umi.eddsa.createKeypairFromSecretKey(secret1);
+        const collectionSigner1 = createSignerFromKeypair(umi, myKeypair1);
+        umi.use(signerIdentity(collectionSigner1));
+
         const signer = generateSigner(umi);
         const myKeypair = umi.eddsa.generateKeypair();
-        const keyypair = createSignerFromKeypair(umi, myKeypair);
+        const keypair = createSignerFromKeypair(umi, myKeypair);
         console.log('signer', signer);
-        console.log('keyypair', keyypair);
+        console.log('keypair', keypair);
     };
 
     const findPlayerAsset = useCallback(async (): Promise<string | null> => {
@@ -82,6 +91,10 @@ export const useMetaplexGame = () => {
             if (!walletPublicKey) throw new Error('Wallet not connected');
             const umi = getUmi();
             if (!umi) throw new Error('Umi not initialized');
+            const secret1 = new Uint8Array(Buffer.from(SIGNER_KEY, 'base64'));
+            const myKeypair1 = umi.eddsa.createKeypairFromSecretKey(secret1);
+            const collectionSigner1 = createSignerFromKeypair(umi, myKeypair1);
+            umi.use(signerIdentity(collectionSigner1));
             setIsLoading(true);
             try {
                 const initialPlayerData: PlayerData = {
@@ -97,36 +110,27 @@ export const useMetaplexGame = () => {
                     collectionAddress || COLLECTION_ADDRESS
                 );
 
-                const tx = transactionBuilder().add(
-                    create(umi, {
-                        name: `Fantasy RPG Character - ${className}`,
-                        uri: await uploadMetadata(initialPlayerData),
-                        asset: assetSigner,
-                        owner: publicKey(walletPublicKey.toString()),
-                        collection: collection,
-                        plugins: [
-                            {
-                                type: 'TransferDelegate',
-                                authority: {
-                                    type: 'Address',
-                                    address: SIGNER_ADDRESS
-                                }
-                            },
-                            {
-                                type: 'UpdateDelegate',
-                                authority: {
-                                    type: 'Address',
-                                    address: SIGNER_ADDRESS
-                                },
-                                additionalDelegates: [SIGNER_ADDRESS]
-                            }
-                        ]
-                    })
-                );
+                await create(umi, {
+                    name: `Fantasy RPG Character - ${className}`,
+                    uri: await uploadMetadata(initialPlayerData),
+                    asset: assetSigner,
+                    owner: publicKey(walletPublicKey.toString()),
+                    collection: collection,
+                    plugins: [
+                        {
+                            type: 'TransferDelegate',
+                            authority: { type: 'Address', address: SIGNER_ADDRESS },
+                        },
+                        {
+                            type: 'UpdateDelegate',
+                            authority: { type: 'Address', address: SIGNER_ADDRESS },
+                            additionalDelegates: [
+                                SIGNER_ADDRESS
+                            ]
+                        }
+                    ]
+                }).sendAndConfirm(umi, {confirm: { commitment: 'finalized' }});
 
-                await tx.sendAndConfirm(umi, {
-                    confirm: { commitment: 'finalized' }
-                });
                 const assetAddress = assetSigner.publicKey.toString();
                 setPlayerAssetAddress(assetAddress);
                 return initialPlayerData;
@@ -165,14 +169,23 @@ export const useMetaplexGame = () => {
     const createCollectionCharacter = useCallback(async () => {
         const umi = getUmi();
         if (!umi) throw new Error('Umi not initialized');
+        const secret1 = new Uint8Array(Buffer.from(SIGNER_KEY, 'base64'));
+        const myKeypair1 = umi.eddsa.createKeypairFromSecretKey(secret1);
+        const collectionSigner1 = createSignerFromKeypair(umi, myKeypair1);
+        umi.use(signerIdentity(collectionSigner1));
 
         const collectionSigner = generateSigner(umi);
+
+        const txConfig: TransactionBuilderSendAndConfirmOptions = {
+            send: { skipPreflight: true },
+            confirm: { commitment: 'processed' }
+        };
 
         await createCollection(umi, {
             collection: collectionSigner,
             name: COLLECTION_NAME,
-            uri: 'https://solana-fantasy-rpg.vercel.app/collection/fantasy-rpg-collection.json'
-        }).sendAndConfirm(umi);
+            uri: 'https://solana-fantasy-rpg.vercel.app/collection/fantasy-rpg-collection.json',
+        }).sendAndConfirm(umi, txConfig);
 
         const collectionAddr = collectionSigner.publicKey.toString();
         console.log('collectionAddr', collectionAddr);
@@ -244,6 +257,10 @@ export const useMetaplexGame = () => {
                 throw new Error('Player not initialized');
             const umi = getUmi();
             if (!umi) throw new Error('Umi not initialized');
+            const secret1 = new Uint8Array(Buffer.from(SIGNER_KEY, 'base64'));
+            const myKeypair1 = umi.eddsa.createKeypairFromSecretKey(secret1);
+            const collectionSigner1 = createSignerFromKeypair(umi, myKeypair1);
+            umi.use(signerIdentity(collectionSigner1));
             setIsLoading(true);
             try {
                 const asset = await fetchAsset(

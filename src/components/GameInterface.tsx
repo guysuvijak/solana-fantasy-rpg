@@ -32,6 +32,7 @@ export const GameInterface = () => {
         loadPlayerData,
         attackMonster,
         findPlayerAsset,
+        createCollectionCharacter,
         buyPotion,
         isLoading,
         playerAssetAddress
@@ -86,7 +87,7 @@ export const GameInterface = () => {
                 fetch('/fantasy-rpg-exp.json')
                     .then((res) => res.json())
                     .then((data) => setExpTable(data))
-                    .catch((err) => toast('Failed to load exp table', err));
+                    .catch((err) => [toast('Failed to load exp table', err), console.error('Failed to load exp table', err)]);
 
                 setIsLoadingPlayer(false);
             } else {
@@ -96,6 +97,7 @@ export const GameInterface = () => {
         } catch (error) {
             setIsLoadingPlayer(false);
             toast(`Failed to load player: ${getErrorMessage(error)}`);
+            console.error(`Failed to load player: ${getErrorMessage(error)}`);
         }
     };
 
@@ -108,6 +110,7 @@ export const GameInterface = () => {
             toast('Welcome to Fantasy RPG !!!');
         } catch (error) {
             toast(`Failed to create character: ${getErrorMessage(error)}`);
+            console.error(`Failed to create character: ${getErrorMessage(error)}`);
         }
     };
 
@@ -170,6 +173,7 @@ export const GameInterface = () => {
             toast('Attack success.');
         } catch (error) {
             toast(`Attack failed: ${getErrorMessage(error)}`);
+            console.error(`Attack failed: ${getErrorMessage(error)}`);
         }
 
         setIsAttacking(false);
@@ -183,6 +187,7 @@ export const GameInterface = () => {
             toast('Buy potion success.');
         } catch (err) {
             toast(`Buy potion failed: ${getErrorMessage(err)}`);
+            console.error(`Buy potion failed: ${getErrorMessage(err)}`);
         }
     };
 
@@ -233,6 +238,9 @@ export const GameInterface = () => {
                 )}
                 <div className='max-w-2xl mx-auto'>
                     <div className='flex justify-between items-center mb-8'>
+                        
+
+            <button onClick={() => createCollectionCharacter()} className='z-100'>createCollectionCharacter</button>
                         <h1 className='text-3xl font-bold'>Fantasy RPG</h1>
                         <WalletMultiButton className='!bg-white !text-black hover:!bg-gray-200' />
                     </div>
@@ -630,13 +638,13 @@ export const GameInterface = () => {
                                             .
                                         </p>
                                     </div>
-                                    <TooltipWrapper message='View Tx (Solscan)'>
-                                        <div className='text-xs text-muted-foreground mt-1 flex justify-between items-center'>
-                                            <span>
-                                                {new Date(
-                                                    log.timestamp
-                                                ).toLocaleTimeString()}
-                                            </span>
+                                    <div className='text-xs text-muted-foreground mt-1 flex justify-between items-center'>
+                                        <span>
+                                            {new Date(
+                                                log.timestamp
+                                            ).toLocaleTimeString()}
+                                        </span>
+                                        <TooltipWrapper message='View Tx (Solscan)'>
                                             <a
                                                 href={`https://solscan.io/tx/${log.txSignature}?cluster=devnet`}
                                                 target='_blank'
@@ -645,8 +653,8 @@ export const GameInterface = () => {
                                             >
                                                 View Tx
                                             </a>
-                                        </div>
-                                    </TooltipWrapper>
+                                        </TooltipWrapper>
+                                    </div>
                                 </div>
                             ))
                         )}
