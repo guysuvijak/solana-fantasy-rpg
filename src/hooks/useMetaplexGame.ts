@@ -4,18 +4,21 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
 import {
     mplCore,
-    createV1,
     fetchAssetsByOwner,
-    updateV1,
     fetchAssetsByCollection,
-    createCollectionV1
+    createCollection,
+    create,
+    update,
+    fetchAsset,
+    fetchCollection
 } from '@metaplex-foundation/mpl-core';
-import { generateSigner, publicKey, some } from '@metaplex-foundation/umi';
+import { createSignerFromKeypair, generateSigner, publicKey, some, transactionBuilder } from '@metaplex-foundation/umi';
 import { PlayerData, Monster, MONSTERS } from '../types/game';
 import bs58 from 'bs58';
 
 const COLLECTION_NAME = import.meta.env.VITE_COLLECTION_NAME;
 const COLLECTION_ADDRESS = import.meta.env.VITE_COLLECTION_ADDRESS;
+const SIGNER_ADDRESS = import.meta.env.VITE_SIGNER_ADDRESS;
 
 export const useMetaplexGame = () => {
     const { connection } = useConnection();
@@ -38,6 +41,16 @@ export const useMetaplexGame = () => {
             .use(mplCore());
         return umi;
     }, [connection, walletPublicKey]);
+
+    const getSigner = () => {
+        const umi = getUmi();
+        if (!umi) throw new Error('Umi not initialized');
+        const signer = generateSigner(umi);
+        const myKeypair = umi.eddsa.generateKeypair();
+        const keyypair = createSignerFromKeypair(umi, myKeypair)
+        console.log('signer', signer)
+        console.log('keyypair', keyypair)
+    };
 
     const findPlayerAsset = useCallback(async (): Promise<string | null> => {
         if (!walletPublicKey) return null;
@@ -66,6 +79,7 @@ export const useMetaplexGame = () => {
             setIsLoading(true);
             try {
                 const initialPlayerData: PlayerData = {
+                    birthday: new Date().toISOString(),
                     class: className,
                     killed: 0,
                     gold: 0,
@@ -73,17 +87,31 @@ export const useMetaplexGame = () => {
                     exp: 0
                 };
                 const assetSigner = generateSigner(umi);
+                const collection = await fetchCollection(umi, collectionAddress || COLLECTION_ADDRESS);
 
-                await createV1(umi, {
-                    asset: assetSigner,
-                    name: `Fantasy RPG Character - ${className}`,
-                    uri: await uploadMetadata(initialPlayerData),
-                    owner: publicKey(walletPublicKey.toString()),
-                    collection: publicKey(
-                        collectionAddress || COLLECTION_ADDRESS
-                    )
-                }).sendAndConfirm(umi);
-
+                const tx = transactionBuilder()
+                    .add(create(umi, {
+                        name: `Fantasy RPG Character - ${className}`,
+                        uri: await uploadMetadata(initialPlayerData),
+                        asset: assetSigner,
+                        owner: publicKey(walletPublicKey.toString()),
+                        collection: collection,
+                        plugins: [
+                            {
+                                type: 'TransferDelegate',
+                                authority: { type: 'Address', address: SIGNER_ADDRESS },
+                            },
+                            {
+                                type: 'UpdateDelegate',
+                                authority: { type: 'Address', address: SIGNER_ADDRESS },
+                                additionalDelegates: [
+                                    SIGNER_ADDRESS
+                                ]
+                            }
+                        ]
+                    }))
+                    
+                await tx.sendAndConfirm(umi, {confirm: { commitment: 'finalized' }});
                 const assetAddress = assetSigner.publicKey.toString();
                 setPlayerAssetAddress(assetAddress);
                 return initialPlayerData;
@@ -99,7 +127,9 @@ export const useMetaplexGame = () => {
             name: `Fantasy RPG Character - ${playerData.class}`,
             description: `A ${playerData.class} character in Fantasy RPG game`,
             image: `https://solana-fantasy-rpg.vercel.app/class/class-${playerData.class.toLowerCase()}.png`,
+            external_url: 'https://solana-fantasy-rpg.vercel.app',
             attributes: [
+                { trait_type: 'birthday', value: new Date().toISOString() },
                 { trait_type: 'Class', value: playerData.class },
                 { trait_type: 'Monsters Killed', value: playerData.killed },
                 { trait_type: 'Gold', value: playerData.gold },
@@ -119,20 +149,20 @@ export const useMetaplexGame = () => {
         return `data:application/json;base64,${btoa(JSON.stringify(metadata))}`;
     };
 
-    const createCollection = useCallback(async () => {
+    const createCollectionCharacter = useCallback(async () => {
         const umi = getUmi();
         if (!umi) throw new Error('Umi not initialized');
 
         const collectionSigner = generateSigner(umi);
 
-        await createCollectionV1(umi, {
+        await createCollection(umi, {
             collection: collectionSigner,
             name: COLLECTION_NAME,
-            uri: 'https://solana-fantasy-rpg.vercel.app/collection/fantasy-rpg-collection.json',
-            updateAuthority: publicKey(`${walletPublicKey}`)
+            uri: 'https://solana-fantasy-rpg.vercel.app/collection/fantasy-rpg-collection.json'
         }).sendAndConfirm(umi);
 
         const collectionAddr = collectionSigner.publicKey.toString();
+        console.log('collectionAddr',collectionAddr)
         setCollectionAddress(collectionAddr);
         return collectionAddr;
     }, [walletPublicKey, getUmi]);
@@ -166,6 +196,9 @@ export const useMetaplexGame = () => {
 
             if (attributes) {
                 return {
+                    birthday:
+                        attributes.find((a: any) => a.trait_type === 'Birthday')
+                            ?.value ?? new Date().toISOString(),
                     class:
                         attributes.find((a: any) => a.trait_type === 'Class')
                             ?.value ?? 'Warrior',
@@ -203,10 +236,10 @@ export const useMetaplexGame = () => {
             if (!umi) throw new Error('Umi not initialized');
             setIsLoading(true);
             try {
-                const tx = await updateV1(umi, {
-                    asset: publicKey(playerAssetAddress),
-                    collection: COLLECTION_ADDRESS,
-                    newUri: some(await uploadMetadata(playerData))
+                const asset = await fetchAsset(umi, publicKey(playerAssetAddress));
+                const tx = await update(umi, {
+                    asset: asset,
+                    uri: some(await uploadMetadata(playerData))
                 }).sendAndConfirm(umi);
                 const txSignature = bs58.encode(tx.signature);
                 return txSignature;
@@ -235,6 +268,9 @@ export const useMetaplexGame = () => {
             const attrs = metadata.attributes;
 
             players.push({
+                birthday:
+                    attrs.find((a: any) => a.trait_type === 'Birthday')
+                        ?.value ?? new Date().toISOString(),
                 class:
                     attrs.find((a: any) => a.trait_type === 'Class')?.value ??
                     'Unknown',
@@ -326,11 +362,12 @@ export const useMetaplexGame = () => {
         initializePlayer,
         loadPlayerData,
         updatePlayerData,
-        createCollection,
+        createCollectionCharacter,
         loadLeaderboardData,
         attackMonster,
         findPlayerAsset,
         buyPotion,
+        getSigner,
         isLoading,
         isConnected: !!walletPublicKey,
         playerAssetAddress

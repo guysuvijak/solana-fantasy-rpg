@@ -236,8 +236,8 @@ export const GameInterface = () => {
                         </p>
 
                         <div className='grid grid-cols-2 gap-4'>
-                            {CHARACTER_CLASSES.map((className) => (
-                                <div className='flex flex-col space-y-2'>
+                            {CHARACTER_CLASSES.map((className, index) => (
+                                <div key={className + index} className='flex flex-col space-y-2'>
                                     <img
                                         src={`/class/class-${className.toLowerCase()}.png`}
                                         alt={className}
