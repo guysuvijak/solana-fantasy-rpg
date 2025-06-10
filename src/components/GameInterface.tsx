@@ -237,7 +237,10 @@ export const GameInterface = () => {
 
                         <div className='grid grid-cols-2 gap-4'>
                             {CHARACTER_CLASSES.map((className, index) => (
-                                <div key={className + index} className='flex flex-col space-y-2'>
+                                <div
+                                    key={className + index}
+                                    className='flex flex-col space-y-2'
+                                >
                                     <img
                                         src={`/class/class-${className.toLowerCase()}.png`}
                                         alt={className}
@@ -334,8 +337,7 @@ export const GameInterface = () => {
     const exp = playerData.exp || 0;
 
     const currentLevelExp = expTable[(currentLevel - 1).toString()] || 0;
-    const nextLevelExp =
-        expTable[currentLevel.toString()] || 100;
+    const nextLevelExp = expTable[currentLevel.toString()] || 100;
 
     const expRange = nextLevelExp - currentLevelExp;
     const expIntoLevel = exp - currentLevelExp;

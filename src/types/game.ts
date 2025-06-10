@@ -1,5 +1,4 @@
 export interface PlayerData {
-    birthday: string;
     class: string;
     killed: number;
     gold: number;

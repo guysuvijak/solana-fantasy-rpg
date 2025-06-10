@@ -12,7 +12,13 @@ import {
     fetchAsset,
     fetchCollection
 } from '@metaplex-foundation/mpl-core';
-import { createSignerFromKeypair, generateSigner, publicKey, some, transactionBuilder } from '@metaplex-foundation/umi';
+import {
+    createSignerFromKeypair,
+    generateSigner,
+    publicKey,
+    some,
+    transactionBuilder
+} from '@metaplex-foundation/umi';
 import { PlayerData, Monster, MONSTERS } from '../types/game';
 import bs58 from 'bs58';
 
@@ -47,9 +53,9 @@ export const useMetaplexGame = () => {
         if (!umi) throw new Error('Umi not initialized');
         const signer = generateSigner(umi);
         const myKeypair = umi.eddsa.generateKeypair();
-        const keyypair = createSignerFromKeypair(umi, myKeypair)
-        console.log('signer', signer)
-        console.log('keyypair', keyypair)
+        const keyypair = createSignerFromKeypair(umi, myKeypair);
+        console.log('signer', signer);
+        console.log('keyypair', keyypair);
     };
 
     const findPlayerAsset = useCallback(async (): Promise<string | null> => {
@@ -79,7 +85,6 @@ export const useMetaplexGame = () => {
             setIsLoading(true);
             try {
                 const initialPlayerData: PlayerData = {
-                    birthday: new Date().toISOString(),
                     class: className,
                     killed: 0,
                     gold: 0,
@@ -87,10 +92,13 @@ export const useMetaplexGame = () => {
                     exp: 0
                 };
                 const assetSigner = generateSigner(umi);
-                const collection = await fetchCollection(umi, collectionAddress || COLLECTION_ADDRESS);
+                const collection = await fetchCollection(
+                    umi,
+                    collectionAddress || COLLECTION_ADDRESS
+                );
 
-                const tx = transactionBuilder()
-                    .add(create(umi, {
+                const tx = transactionBuilder().add(
+                    create(umi, {
                         name: `Fantasy RPG Character - ${className}`,
                         uri: await uploadMetadata(initialPlayerData),
                         asset: assetSigner,
@@ -99,19 +107,26 @@ export const useMetaplexGame = () => {
                         plugins: [
                             {
                                 type: 'TransferDelegate',
-                                authority: { type: 'Address', address: SIGNER_ADDRESS },
+                                authority: {
+                                    type: 'Address',
+                                    address: SIGNER_ADDRESS
+                                }
                             },
                             {
                                 type: 'UpdateDelegate',
-                                authority: { type: 'Address', address: SIGNER_ADDRESS },
-                                additionalDelegates: [
-                                    SIGNER_ADDRESS
-                                ]
+                                authority: {
+                                    type: 'Address',
+                                    address: SIGNER_ADDRESS
+                                },
+                                additionalDelegates: [SIGNER_ADDRESS]
                             }
                         ]
-                    }))
-                    
-                await tx.sendAndConfirm(umi, {confirm: { commitment: 'finalized' }});
+                    })
+                );
+
+                await tx.sendAndConfirm(umi, {
+                    confirm: { commitment: 'finalized' }
+                });
                 const assetAddress = assetSigner.publicKey.toString();
                 setPlayerAssetAddress(assetAddress);
                 return initialPlayerData;
@@ -162,7 +177,7 @@ export const useMetaplexGame = () => {
         }).sendAndConfirm(umi);
 
         const collectionAddr = collectionSigner.publicKey.toString();
-        console.log('collectionAddr',collectionAddr)
+        console.log('collectionAddr', collectionAddr);
         setCollectionAddress(collectionAddr);
         return collectionAddr;
     }, [walletPublicKey, getUmi]);
@@ -196,9 +211,6 @@ export const useMetaplexGame = () => {
 
             if (attributes) {
                 return {
-                    birthday:
-                        attributes.find((a: any) => a.trait_type === 'Birthday')
-                            ?.value ?? new Date().toISOString(),
                     class:
                         attributes.find((a: any) => a.trait_type === 'Class')
                             ?.value ?? 'Warrior',
@@ -236,7 +248,10 @@ export const useMetaplexGame = () => {
             if (!umi) throw new Error('Umi not initialized');
             setIsLoading(true);
             try {
-                const asset = await fetchAsset(umi, publicKey(playerAssetAddress));
+                const asset = await fetchAsset(
+                    umi,
+                    publicKey(playerAssetAddress)
+                );
                 const tx = await update(umi, {
                     asset: asset,
                     uri: some(await uploadMetadata(playerData))
@@ -268,9 +283,6 @@ export const useMetaplexGame = () => {
             const attrs = metadata.attributes;
 
             players.push({
-                birthday:
-                    attrs.find((a: any) => a.trait_type === 'Birthday')
-                        ?.value ?? new Date().toISOString(),
                 class:
                     attrs.find((a: any) => a.trait_type === 'Class')?.value ??
                     'Unknown',
