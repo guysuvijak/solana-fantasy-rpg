@@ -2,10 +2,11 @@
 import { useEffect, useState } from 'react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Link } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
-import { useMetaplexGame } from '../hooks/useMetaplexGame';
-import { PlayerData } from '../types/game';
-import { getCache, setCache } from '../utils/cache';
+import { ChevronLeft, SearchCheck } from 'lucide-react';
+import { useMetaplexGame } from '@/hooks/useMetaplexGame';
+import { PlayerData } from '@/types/game';
+import { getCache, setCache } from '@/utils/cache';
+import { TooltipWrapper } from '@/components/TooltipWrapper';
 
 const Leaderboard = () => {
     const { loadLeaderboardData } = useMetaplexGame();
@@ -170,16 +171,36 @@ const Leaderboard = () => {
                                                         {entry.gold || 0}
                                                     </td>
                                                     <td className='px-4 py-3 font-mono'>
-                                                        <a
-                                                            href={`https://core.metaplex.com/explorer/${entry.mint}?env=devnet`}
-                                                            target='_blank'
-                                                            rel='noopener noreferrer'
-                                                            className='text-blue-400 hover:underline'
-                                                        >
-                                                            {entry.owner
-                                                                ? `${entry.owner.slice(0, 5)}...${entry.owner.slice(-5)}`
-                                                                : '???'}
-                                                        </a>
+                                                        <div className='flex gap-2'>
+                                                            <TooltipWrapper message='Detail on Metaplex'>
+                                                                <a
+                                                                    href={`https://core.metaplex.com/explorer/${entry.mint}?env=devnet`}
+                                                                    target='_blank'
+                                                                    rel='noopener noreferrer'
+                                                                    className='text-blue-400 hover:underline'
+                                                                >
+                                                                    {entry.owner
+                                                                        ? `${entry.owner.slice(0, 5)}...${entry.owner.slice(-5)}`
+                                                                        : '???'}
+                                                                </a>
+                                                            </TooltipWrapper>
+                                                            {entry.owner && (
+                                                                <TooltipWrapper message='Detail on Solscan'>
+                                                                    <a
+                                                                        href={`https://solscan.io/token/${entry.mint}?cluster=devnet`}
+                                                                        target='_blank'
+                                                                        rel='noopener noreferrer'
+                                                                        className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
+                                                                    >
+                                                                        <SearchCheck
+                                                                            size={
+                                                                                14
+                                                                            }
+                                                                        />
+                                                                    </a>
+                                                                </TooltipWrapper>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))
@@ -188,14 +209,14 @@ const Leaderboard = () => {
                             </table>
                         )}
                     </div>
-                    <p className='text-center text-gray-400 mt-4'>
+                    <p className='text-center text-muted-foreground mt-4'>
                         Leaderboard resets every 3 minutes
                     </p>
                 </div>
             </main>
 
             {/* Footer */}
-            <footer className='w-full bg-black text-gray-400 text-center text-sm py-4 mt-8'>
+            <footer className='w-full bg-black text-muted-foreground text-center text-sm py-4 mt-8'>
                 Created by{' '}
                 <a
                     href='https://github.com/guysuvijak'

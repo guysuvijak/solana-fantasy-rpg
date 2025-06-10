@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { useMetaplexGame } from '../hooks/useMetaplexGame';
-import { PlayerData, BattleLog, Monster } from '../types/game';
+import { useMetaplexGame } from '@/hooks/useMetaplexGame';
+import {
+    PlayerData,
+    BattleLog,
+    Monster,
+    DEFAULT_CHARACTER_STATS
+} from '@/types/game';
 import {
     Coins,
     Scroll,
@@ -12,10 +17,13 @@ import {
     PawPrint,
     Skull,
     ShoppingCart,
-    ExternalLink
+    ExternalLink,
+    SearchCheck,
+    Info
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { DEFAULT_CHARACTER_STATS } from '../types/game';
+import { TooltipWrapper } from '@/components/TooltipWrapper';
+import { toast } from 'sonner';
 
 export const GameInterface = () => {
     const { connected } = useWallet();
@@ -49,6 +57,12 @@ export const GameInterface = () => {
         }
     }, [connected]);
 
+    const getErrorMessage = (error: unknown): string => {
+        if (error instanceof Error) return error.message;
+        if (typeof error === 'string') return error;
+        return 'An unknown error occurred';
+    };
+
     const loadPlayer = async () => {
         try {
             setIsLoadingPlayer(true);
@@ -72,9 +86,7 @@ export const GameInterface = () => {
                 fetch('/fantasy-rpg-exp.json')
                     .then((res) => res.json())
                     .then((data) => setExpTable(data))
-                    .catch((err) =>
-                        console.error('Failed to load exp table', err)
-                    );
+                    .catch((err) => toast('Failed to load exp table', err));
 
                 setIsLoadingPlayer(false);
             } else {
@@ -83,7 +95,7 @@ export const GameInterface = () => {
             }
         } catch (error) {
             setIsLoadingPlayer(false);
-            console.error('Failed to load player:', error);
+            toast(`Failed to load player: ${getErrorMessage(error)}`);
         }
     };
 
@@ -93,18 +105,16 @@ export const GameInterface = () => {
             setPlayerData(data);
             setShowClassSelection(false);
             setBattleLogs([]);
+            toast('Welcome to Fantasy RPG !!!');
         } catch (error) {
-            console.error('Failed to create character:', error);
-            alert(
-                'Failed to create character. Make sure you have some SOL for transaction fees.'
-            );
+            toast(`Failed to create character: ${getErrorMessage(error)}`);
         }
     };
 
     const attack = async () => {
         if (!playerData || isAttacking) return;
         if (playerData.hp && playerData.hp < 10) {
-            return alert('Please use potions and have more than 10 HP.');
+            toast('Please use potions and have more than 10 HP.');
         }
 
         setIsAttacking(true);
@@ -157,13 +167,23 @@ export const GameInterface = () => {
                     JSON.stringify(updatedLogs)
                 );
             }
+            toast('Attack success.');
         } catch (error) {
-            console.error('Attack failed:', error);
-            alert('Attack failed. Please try again.');
+            toast(`Attack failed: ${getErrorMessage(error)}`);
         }
 
         setIsAttacking(false);
         setAttackProgress(0);
+    };
+
+    const buyPotionClick = async (playerData: PlayerData) => {
+        try {
+            const updated = await buyPotion(playerData);
+            setPlayerData(updated);
+            toast('Buy potion success.');
+        } catch (err) {
+            toast(`Buy potion failed: ${getErrorMessage(err)}`);
+        }
     };
 
     const getLevelFromExp = (exp: number): number => {
@@ -178,14 +198,6 @@ export const GameInterface = () => {
         }
 
         return levels[levels.length - 1]?.level || 1; // Max level fallback
-    };
-
-    const getNextExp = (level: number): number => {
-        return (
-            expTable[(level + 1).toString()] ||
-            expTable[level.toString()] ||
-            9999
-        );
     };
 
     if (!connected) {
@@ -415,18 +427,30 @@ export const GameInterface = () => {
                                     <p className='text-sm font-mono text-white'>
                                         {`${playerAssetAddress.slice(0, 5)}.....${playerAssetAddress.slice(-5)}`}
                                     </p>
-                                    <a
-                                        href={`https://core.metaplex.com/explorer/${playerAssetAddress}?env=devnet`}
-                                        target='_blank'
-                                        rel='noopener noreferrer'
-                                        className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
-                                    >
-                                        <ExternalLink size={14} />
-                                    </a>
+                                    <TooltipWrapper message='Detail on Solscan'>
+                                        <a
+                                            href={`https://solscan.io/token/${playerAssetAddress}?cluster=devnet`}
+                                            target='_blank'
+                                            rel='noopener noreferrer'
+                                            className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
+                                        >
+                                            <SearchCheck size={14} />
+                                        </a>
+                                    </TooltipWrapper>
+                                    <TooltipWrapper message='Detail on Metaplex'>
+                                        <a
+                                            href={`https://core.metaplex.com/explorer/${playerAssetAddress}?env=devnet`}
+                                            target='_blank'
+                                            rel='noopener noreferrer'
+                                            className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
+                                        >
+                                            <ExternalLink size={14} />
+                                        </a>
+                                    </TooltipWrapper>
                                 </div>
                             </div>
                         </div>
-                        <div className='w-full h-[1px] bg-gray-400' />
+                        <div className='w-full h-[1px] bg-border' />
                         {/* Character Stats Section */}
                         <div className='w-full bg-gray-800 rounded p-4 pb-2 space-y-1 text-sm'>
                             <div className='grid grid-cols-4 gap-4'>
@@ -446,27 +470,31 @@ export const GameInterface = () => {
                                     )
                                 )}
                             </div>
-                            <p className='text-gray-400 text-center'>
+                            <p className='text-muted-foreground text-center'>
                                 Status values are allocated according to class
                                 and increase by +1 at every level.
                             </p>
                         </div>
-                        <div className='w-full h-[1px] bg-gray-400' />
+                        <div className='w-full h-[1px] bg-border' />
                         <div className='grid grid-cols-2 gap-4'>
-                            <div className='flex items-center'>
-                                <Skull
-                                    className='mr-2 text-yellow-500'
-                                    size={20}
-                                />
-                                <span>Killed: {playerData.killed}</span>
-                            </div>
-                            <div className='flex items-center'>
-                                <Coins
-                                    className='mr-2 text-yellow-500'
-                                    size={20}
-                                />
-                                <span>Gold: {playerData.gold}</span>
-                            </div>
+                            <TooltipWrapper message='Get Kill count from "Attack Monster"'>
+                                <div className='flex items-center'>
+                                    <Skull
+                                        className='mr-2 text-yellow-500'
+                                        size={20}
+                                    />
+                                    <span>Killed: {playerData.killed}</span>
+                                </div>
+                            </TooltipWrapper>
+                            <TooltipWrapper message='Earn from "Attack Monster"'>
+                                <div className='flex items-center'>
+                                    <Coins
+                                        className='mr-2 text-yellow-500'
+                                        size={20}
+                                    />
+                                    <span>Gold: {playerData.gold}</span>
+                                </div>
+                            </TooltipWrapper>
                         </div>
                         <Link
                             to='/leaderboard'
@@ -495,29 +523,20 @@ export const GameInterface = () => {
                             <p className='text-center whitespace-pre-wrap'>
                                 Potion (HP+10)
                             </p>
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const updated =
-                                            await buyPotion(playerData);
-                                        setPlayerData(updated);
-                                    } catch (err) {
-                                        console.error(
-                                            'Buy potion failed:',
-                                            err
-                                        );
-                                    }
-                                }}
-                                className='cursor-pointer bg-black hover:bg-[#131313] rounded px-4 py-1'
-                            >
-                                <div className='flex items-center gap-2'>
-                                    <span>10</span>
-                                    <Coins
-                                        className='text-yellow-500'
-                                        size={18}
-                                    />
-                                </div>
-                            </button>
+                            <TooltipWrapper message='Buy Potion'>
+                                <button
+                                    onClick={() => buyPotionClick(playerData)}
+                                    className='cursor-pointer bg-black hover:bg-[#131313] rounded px-4 py-1'
+                                >
+                                    <div className='flex items-center gap-2'>
+                                        <span>10</span>
+                                        <Coins
+                                            className='text-yellow-500'
+                                            size={18}
+                                        />
+                                    </div>
+                                </button>
+                            </TooltipWrapper>
                         </div>
                     </div>
                 </div>
@@ -527,6 +546,12 @@ export const GameInterface = () => {
                     <h3 className='text-lg font-semibold mb-4 flex items-center'>
                         <Axe className='mr-2' size={20} />
                         Combat
+                        <TooltipWrapper message='Attack monster for earn Gold & Exp'>
+                            <Info
+                                size={20}
+                                className='ml-2 text-muted-foreground hover:text-foreground'
+                            />
+                        </TooltipWrapper>
                     </h3>
 
                     {isAttacking ? (
@@ -563,10 +588,10 @@ export const GameInterface = () => {
                         )}
                     </button>
 
-                    <p className='text-xs text-gray-500 mt-2 text-center'>
+                    <p className='text-xs text-muted-foreground mt-2 text-center'>
                         Each attack updates your character NFT on-chain
                     </p>
-                    <p className='text-xs text-gray-500 mt-2 text-center'>
+                    <p className='text-xs text-muted-foreground mt-2 text-center'>
                         (random monster: Slime, Goblin, Orc, Wolf)
                     </p>
                 </div>
@@ -580,7 +605,7 @@ export const GameInterface = () => {
 
                     <div className='max-h-64 overflow-y-auto space-y-2'>
                         {battleLogs.length === 0 ? (
-                            <p className='text-gray-400 text-center py-4'>
+                            <p className='text-muted-foreground text-center py-4'>
                                 No battles yet. Start attacking to see your
                                 victories!
                             </p>
@@ -605,21 +630,23 @@ export const GameInterface = () => {
                                             .
                                         </p>
                                     </div>
-                                    <div className='text-xs text-gray-400 mt-1 flex justify-between items-center'>
-                                        <span>
-                                            {new Date(
-                                                log.timestamp
-                                            ).toLocaleTimeString()}
-                                        </span>
-                                        <a
-                                            href={`https://solscan.io/tx/${log.txSignature}?cluster=devnet`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                            className='text-blue-400 hover:underline ml-2'
-                                        >
-                                            View TX
-                                        </a>
-                                    </div>
+                                    <TooltipWrapper message='View Tx (Solscan)'>
+                                        <div className='text-xs text-muted-foreground mt-1 flex justify-between items-center'>
+                                            <span>
+                                                {new Date(
+                                                    log.timestamp
+                                                ).toLocaleTimeString()}
+                                            </span>
+                                            <a
+                                                href={`https://solscan.io/tx/${log.txSignature}?cluster=devnet`}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                                className='text-blue-400 hover:underline ml-2'
+                                            >
+                                                View Tx
+                                            </a>
+                                        </div>
+                                    </TooltipWrapper>
                                 </div>
                             ))
                         )}

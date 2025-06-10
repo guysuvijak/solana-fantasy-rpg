@@ -142,7 +142,6 @@ export const useMetaplexGame = () => {
             name: `Fantasy RPG Character - ${playerData.class}`,
             description: `A ${playerData.class} character in Fantasy RPG game`,
             image: `https://solana-fantasy-rpg.vercel.app/class/class-${playerData.class.toLowerCase()}.png`,
-            external_url: 'https://solana-fantasy-rpg.vercel.app',
             attributes: [
                 { trait_type: 'Class', value: playerData.class },
                 { trait_type: 'Monsters Killed', value: playerData.killed },
@@ -251,9 +250,14 @@ export const useMetaplexGame = () => {
                     umi,
                     publicKey(playerAssetAddress)
                 );
+                const collection = await fetchCollection(
+                    umi,
+                    collectionAddress || COLLECTION_ADDRESS
+                );
                 const tx = await update(umi, {
                     asset: asset,
-                    uri: some(await uploadMetadata(playerData))
+                    uri: some(await uploadMetadata(playerData)),
+                    collection: collection
                 }).sendAndConfirm(umi);
                 const txSignature = bs58.encode(tx.signature);
                 return txSignature;
