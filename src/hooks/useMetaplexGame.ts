@@ -144,7 +144,6 @@ export const useMetaplexGame = () => {
             image: `https://solana-fantasy-rpg.vercel.app/class/class-${playerData.class.toLowerCase()}.png`,
             external_url: 'https://solana-fantasy-rpg.vercel.app',
             attributes: [
-                { trait_type: 'birthday', value: new Date().toISOString() },
                 { trait_type: 'Class', value: playerData.class },
                 { trait_type: 'Monsters Killed', value: playerData.killed },
                 { trait_type: 'Gold', value: playerData.gold },
