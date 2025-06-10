@@ -348,7 +348,7 @@ export const useMetaplexGame = () => {
                 hp: currentPlayerData.hp
                     ? Math.max(currentPlayerData.hp - lostHp, 0)
                     : 100,
-                exp: expEarned
+                exp: currentPlayerData.exp + expEarned
             };
             const txSignature = await updatePlayerData(newPlayerData);
             return {
