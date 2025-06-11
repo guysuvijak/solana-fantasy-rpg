@@ -1,12 +1,18 @@
 // src/pages/leaderboard.tsx
 import { useEffect, useState } from 'react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Link } from 'react-router-dom';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { ChevronLeft, SearchCheck } from 'lucide-react';
 import { useMetaplexGame } from '@/hooks/useMetaplexGame';
 import { PlayerData } from '@/types/game';
 import { getCache, setCache } from '@/utils/cache';
 import { TooltipWrapper } from '@/components/TooltipWrapper';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const Leaderboard = () => {
     const { loadLeaderboardData } = useMetaplexGame();
@@ -15,7 +21,6 @@ const Leaderboard = () => {
     const [expTable, setExpTable] = useState<Record<string, number>>({});
 
     useEffect(() => {
-        if (typeof loadLeaderboardData !== 'function') return;
         const fetchLeaderboard = async () => {
             setIsLoading(true);
 
@@ -29,7 +34,7 @@ const Leaderboard = () => {
             const data = await loadLeaderboardData();
             if (data) {
                 setLeaderboard(data);
-                setCache('leaderboard', data); // TTL default = 3 minutes
+                setCache('leaderboard', data);
             }
 
             setIsLoading(false);
@@ -38,7 +43,7 @@ const Leaderboard = () => {
         fetch('/fantasy-rpg-exp.json')
             .then((res) => res.json())
             .then((data) => setExpTable(data))
-            .catch((err) => console.error('Failed to load exp table:', err));
+            .catch(console.error);
 
         fetchLeaderboard();
     }, [loadLeaderboardData]);
@@ -47,182 +52,192 @@ const Leaderboard = () => {
         const levels = Object.entries(expTable)
             .map(([level, threshold]) => ({ level: Number(level), threshold }))
             .sort((a, b) => a.level - b.level);
-
         for (let i = 0; i < levels.length; i++) {
             if (exp < levels[i].threshold) {
                 return levels[i].level;
             }
         }
-
         return levels[levels.length - 1]?.level || 1;
     };
 
     return (
-        <div className='min-h-screen flex flex-col bg-gradient-to-tr from-[#1d0000] to-[#09001f] text-white'>
-            {/* Header */}
-            <div className='flex sticky top-0 justify-between items-center mb-4 bg-gradient-to-b from-[#210035] to-[#16004b] px-4 md:px-6 lg:px-10 py-2'>
-                <div className='flex items-center gap-1 md:gap-2'>
-                    <Link
-                        to='/'
-                        className='flex bg-yellow-400 text-black font-bold items-center justify-center px-2 sm:px-4 py-2 rounded hover:bg-yellow-300'
-                    >
-                        <p className='hidden sm:block'>Back to Game</p>
-                        <p className='block sm:hidden'>
-                            <ChevronLeft size={16} />
-                        </p>
+        <div className='min-h-screen flex flex-col bg-background text-foreground'>
+            <header className='sticky top-0 z-10 bg-background/50 backdrop-blur-md border-b border-border px-4 py-3 flex justify-between items-center'>
+                <div className='flex items-center gap-2'>
+                    <Link to='/'>
+                        <TooltipWrapper message='Back'>
+                            <Button
+                                variant='secondary'
+                                size='sm'
+                                className='gap-2 cursor-pointer'
+                            >
+                                <ChevronLeft className='h-4 w-4' />
+                                <span className='hidden sm:inline'>
+                                    Back to Game
+                                </span>
+                            </Button>
+                        </TooltipWrapper>
                     </Link>
-                    <h1 className='text-3xl font-bold hidden sm:block'>
+                    <h1 className='hidden sm:block text-lg sm:text-2xl font-bold'>
                         Leaderboard
                     </h1>
                 </div>
-                <WalletMultiButton className='!bg-white !text-black hover:!bg-gray-200' />
-            </div>
+                <div className='flex items-center gap-2'>
+                    <ThemeToggle />
+                    <WalletMultiButton className='!bg-primary !text-primary-foreground hover:!opacity-90' />
+                </div>
+            </header>
 
-            {/* Main */}
-            <main className='flex-grow'>
-                <div className='max-w-4xl mx-auto pt-0 p-4 md:p-6'>
-                    <div className='bg-gray-900 rounded-lg overflow-x-auto'>
+            <main className='flex-grow p-4 sm:p-6 md:p-10'>
+                <Card className='max-w-6xl mx-auto'>
+                    <CardHeader>
+                        <CardTitle>Top Players</CardTitle>
+                    </CardHeader>
+                    <CardContent>
                         {isLoading ? (
-                            <div className='flex flex-col items-center justify-center py-8'>
-                                <div className='animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-6' />
-                                <div className='text-center space-y-2'>
-                                    <h1 className='text-2xl sm:text-3xl font-semibold text-white'>
-                                        Loading leaderboard data...
-                                    </h1>
-                                    <p className='text-gray-400 text-sm sm:text-base'>
-                                        Please wait a moment. We're checking
-                                        Solana blockchain.
-                                    </p>
-                                </div>
+                            <div className='space-y-4'>
+                                {[...Array(5)].map((_, i) => (
+                                    <Skeleton
+                                        key={i}
+                                        className='w-full h-10 rounded'
+                                    />
+                                ))}
                             </div>
                         ) : (
-                            <table className='w-full text-left border-collapse'>
-                                <thead>
-                                    <tr className='bg-[#240505] text-yellow-300'>
-                                        <th className='px-4 py-3'>#</th>
-                                        <th className='px-4 py-3'>Class</th>
-                                        <th className='px-4 py-3 text-center'>
-                                            Level
-                                        </th>
-                                        <th className='px-4 py-3 text-center'>
-                                            Exp
-                                        </th>
-                                        <th className='px-4 py-3 text-center'>
-                                            Killed
-                                        </th>
-                                        <th className='px-4 py-3 text-center'>
-                                            Gold
-                                        </th>
-                                        <th className='px-4 py-3'>Address</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {leaderboard.length === 0 ? (
-                                        <tr>
-                                            <td
-                                                colSpan={7}
-                                                className='text-center text-gray-400 py-6'
-                                            >
-                                                No data available yet.
-                                            </td>
+                            <ScrollArea className='w-full'>
+                                <table className='w-full text-sm sm:text-base'>
+                                    <thead>
+                                        <tr className='border-b border-border text-muted-foreground'>
+                                            <th className='text-left py-2 px-2'>
+                                                #
+                                            </th>
+                                            <th className='text-left py-2 px-2'>
+                                                Class
+                                            </th>
+                                            <th className='text-center py-2 px-2'>
+                                                Level
+                                            </th>
+                                            <th className='text-center py-2 px-2'>
+                                                Exp
+                                            </th>
+                                            <th className='text-center py-2 px-2'>
+                                                Killed
+                                            </th>
+                                            <th className='text-center py-2 px-2'>
+                                                Gold
+                                            </th>
+                                            <th className='text-left py-2 px-2'>
+                                                Address
+                                            </th>
                                         </tr>
-                                    ) : (
-                                        leaderboard
-                                            .sort(
-                                                (a, b) =>
-                                                    (b.exp || 0) - (a.exp || 0)
-                                            )
-                                            .map((entry, index) => (
-                                                <tr
-                                                    key={entry.mint}
-                                                    className={
-                                                        index % 2 === 0
-                                                            ? 'bg-gray-800'
-                                                            : 'bg-gray-700'
-                                                    }
+                                    </thead>
+                                    <tbody>
+                                        {leaderboard.length === 0 ? (
+                                            <tr>
+                                                <td
+                                                    colSpan={7}
+                                                    className='text-center py-4 text-muted'
                                                 >
-                                                    <td className='px-4 py-3'>
-                                                        {index + 1}
-                                                    </td>
-                                                    <td className='flex gap-1 items-center px-4 py-3'>
-                                                        <img
-                                                            src={`/class/class-${entry.class.toLowerCase()}.png`}
-                                                            alt={
-                                                                entry.class +
-                                                                index
-                                                            }
-                                                            draggable={false}
-                                                            className='hidden sm:block w-[30px] h-[30px]'
-                                                        />
-                                                        {entry.class}
-                                                    </td>
-                                                    <td className='px-4 py-3 text-center'>
-                                                        {getLevelFromExp(
-                                                            entry.exp || 0
-                                                        )}
-                                                    </td>
-                                                    <td className='px-4 py-3 text-center'>
-                                                        {entry.exp || 0}
-                                                    </td>
-                                                    <td className='px-4 py-3 text-center'>
-                                                        {entry.killed || 0}
-                                                    </td>
-                                                    <td className='px-4 py-3 text-center'>
-                                                        {entry.gold || 0}
-                                                    </td>
-                                                    <td className='px-4 py-3 font-mono'>
-                                                        <div className='flex gap-2'>
-                                                            <TooltipWrapper message='Detail on Metaplex'>
-                                                                <a
-                                                                    href={`https://core.metaplex.com/explorer/${entry.mint}?env=devnet`}
-                                                                    target='_blank'
-                                                                    rel='noopener noreferrer'
-                                                                    className='text-blue-400 hover:underline'
-                                                                >
-                                                                    {entry.owner
-                                                                        ? `${entry.owner.slice(0, 5)}...${entry.owner.slice(-5)}`
-                                                                        : '???'}
-                                                                </a>
-                                                            </TooltipWrapper>
-                                                            {entry.owner && (
-                                                                <TooltipWrapper message='Detail on Solscan'>
+                                                    No data available.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            leaderboard
+                                                .sort(
+                                                    (a, b) =>
+                                                        (b.exp || 0) -
+                                                        (a.exp || 0)
+                                                )
+                                                .map((entry, index) => (
+                                                    <tr
+                                                        key={entry.mint}
+                                                        className={`border-b border-border hover:bg-slate-300 dark:hover:bg-slate-600
+                              ${index % 2 === 0 ? 'bg-muted/20' : 'bg-muted'}
+                            `}
+                                                    >
+                                                        <td className='py-2 px-2'>
+                                                            {index + 1}
+                                                        </td>
+                                                        <td className='flex items-center gap-2 py-2 px-2'>
+                                                            <img
+                                                                src={`/class/class-${entry.class.toLowerCase()}.png`}
+                                                                alt={
+                                                                    entry.class
+                                                                }
+                                                                className='hidden sm:block w-6 h-6'
+                                                                draggable={
+                                                                    false
+                                                                }
+                                                            />
+                                                            {entry.class}
+                                                        </td>
+                                                        <td className='text-center py-2 px-2'>
+                                                            {getLevelFromExp(
+                                                                entry.exp || 0
+                                                            )}
+                                                        </td>
+                                                        <td className='text-center py-2 px-2'>
+                                                            {entry.exp || 0}
+                                                        </td>
+                                                        <td className='text-center py-2 px-2'>
+                                                            {entry.killed || 0}
+                                                        </td>
+                                                        <td className='text-center py-2 px-2'>
+                                                            {entry.gold || 0}
+                                                        </td>
+                                                        <td className='py-2 px-2'>
+                                                            <div className='flex gap-2 items-center'>
+                                                                <TooltipWrapper message='Metaplex Detail'>
                                                                     <a
-                                                                        href={`https://solscan.io/token/${entry.mint}?cluster=devnet`}
+                                                                        href={`https://core.metaplex.com/explorer/${entry.mint}?env=devnet`}
                                                                         target='_blank'
                                                                         rel='noopener noreferrer'
-                                                                        className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
+                                                                        className='text-blue-500 hover:underline'
                                                                     >
-                                                                        <SearchCheck
-                                                                            size={
-                                                                                14
-                                                                            }
-                                                                        />
+                                                                        {entry.owner
+                                                                            ? `${entry.owner.slice(0, 5)}...${entry.owner.slice(-5)}`
+                                                                            : '???'}
                                                                     </a>
                                                                 </TooltipWrapper>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                    )}
-                                </tbody>
-                            </table>
+                                                                {entry.owner && (
+                                                                    <TooltipWrapper message='View on Solscan'>
+                                                                        <a
+                                                                            href={`https://solscan.io/token/${entry.mint}?cluster=devnet`}
+                                                                            target='_blank'
+                                                                            rel='noopener noreferrer'
+                                                                            className='inline-flex items-center justify-center text-xs bg-primary text-primary-foreground px-1 py-0.5 rounded'
+                                                                        >
+                                                                            <SearchCheck
+                                                                                size={
+                                                                                    14
+                                                                                }
+                                                                            />
+                                                                        </a>
+                                                                    </TooltipWrapper>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </ScrollArea>
                         )}
-                    </div>
-                    <p className='text-center text-muted-foreground mt-4'>
-                        Leaderboard resets every 3 minutes
-                    </p>
-                </div>
+                    </CardContent>
+                </Card>
+                <p className='text-center text-xs text-muted-foreground mt-4'>
+                    Leaderboard resets every 3 minutes.
+                </p>
             </main>
 
-            {/* Footer */}
-            <footer className='w-full bg-black text-muted-foreground text-center text-sm py-4 mt-8'>
+            <Separator className='my-4' />
+            <footer className='text-center text-muted-foreground text-sm pb-6'>
                 Created by{' '}
                 <a
                     href='https://github.com/guysuvijak'
                     target='_blank'
-                    rel='noopener noreferrer'
-                    className='underline text-white font-semibold'
+                    className='underline font-medium hover:text-foreground'
                 >
                     MeteorVIIx
                 </a>{' '}
@@ -230,8 +245,7 @@ const Leaderboard = () => {
                 <a
                     href='https://aimpact.dev'
                     target='_blank'
-                    rel='noopener noreferrer'
-                    className='underline hover:text-white'
+                    className='underline hover:text-foreground'
                 >
                     impact.dev
                 </a>{' '}
@@ -239,8 +253,7 @@ const Leaderboard = () => {
                 <a
                     href='https://github.com/guysuvijak/solana-fantasy-rpg'
                     target='_blank'
-                    rel='noopener noreferrer'
-                    className='underline hover:text-white'
+                    className='underline hover:text-foreground'
                 >
                     Github Repo
                 </a>

@@ -47,7 +47,7 @@ export const useMetaplexGame = () => {
         }
         const umi = createUmi(clusterApiUrl('devnet'))
             .use(walletAdapterIdentity(wallet?.adapter))
-            .use(mplCore())
+            .use(mplCore());
 
         return umi;
     }, [connection, walletPublicKey]);
@@ -119,17 +119,23 @@ export const useMetaplexGame = () => {
                     plugins: [
                         {
                             type: 'TransferDelegate',
-                            authority: { type: 'Address', address: SIGNER_ADDRESS },
+                            authority: {
+                                type: 'Address',
+                                address: SIGNER_ADDRESS
+                            }
                         },
                         {
                             type: 'UpdateDelegate',
-                            authority: { type: 'Address', address: SIGNER_ADDRESS },
-                            additionalDelegates: [
-                                SIGNER_ADDRESS
-                            ]
+                            authority: {
+                                type: 'Address',
+                                address: SIGNER_ADDRESS
+                            },
+                            additionalDelegates: [SIGNER_ADDRESS]
                         }
                     ]
-                }).sendAndConfirm(umi, {confirm: { commitment: 'finalized' }});
+                }).sendAndConfirm(umi, {
+                    confirm: { commitment: 'finalized' }
+                });
 
                 const assetAddress = assetSigner.publicKey.toString();
                 setPlayerAssetAddress(assetAddress);
@@ -184,7 +190,7 @@ export const useMetaplexGame = () => {
         await createCollection(umi, {
             collection: collectionSigner,
             name: COLLECTION_NAME,
-            uri: 'https://solana-fantasy-rpg.vercel.app/collection/fantasy-rpg-collection.json',
+            uri: 'https://solana-fantasy-rpg.vercel.app/collection/fantasy-rpg-collection.json'
         }).sendAndConfirm(umi, txConfig);
 
         const collectionAddr = collectionSigner.publicKey.toString();
@@ -348,7 +354,9 @@ export const useMetaplexGame = () => {
                 hp: currentPlayerData.hp
                     ? Math.max(currentPlayerData.hp - lostHp, 0)
                     : 100,
-                exp: currentPlayerData.exp ? currentPlayerData.exp + expEarned : expEarned
+                exp: currentPlayerData.exp
+                    ? currentPlayerData.exp + expEarned
+                    : expEarned
             };
             const txSignature = await updatePlayerData(newPlayerData);
             return {

@@ -3,6 +3,16 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useMetaplexGame } from '@/hooks/useMetaplexGame';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import {
     PlayerData,
     BattleLog,
     Monster,
@@ -24,6 +34,10 @@ import {
 import { Link } from 'react-router-dom';
 import { TooltipWrapper } from '@/components/TooltipWrapper';
 import { toast } from 'sonner';
+import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
+import ThemeToggle from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/button';
 
 export const GameInterface = () => {
     const { connected } = useWallet();
@@ -32,7 +46,6 @@ export const GameInterface = () => {
         loadPlayerData,
         attackMonster,
         findPlayerAsset,
-        createCollectionCharacter,
         buyPotion,
         isLoading,
         playerAssetAddress
@@ -45,6 +58,8 @@ export const GameInterface = () => {
     const [attackProgress, setAttackProgress] = useState(0);
     const [showClassSelection, setShowClassSelection] = useState(false);
     const [isLoadingPlayer, setIsLoadingPlayer] = useState(false);
+    const [isBuying, setIsBuying] = useState(false);
+    const [selectedClass, setSelectedClass] = useState<string | null>(null);
 
     const CHARACTER_CLASSES = ['Warrior', 'Mage', 'Archer', 'Rogue'];
 
@@ -87,7 +102,10 @@ export const GameInterface = () => {
                 fetch('/fantasy-rpg-exp.json')
                     .then((res) => res.json())
                     .then((data) => setExpTable(data))
-                    .catch((err) => [toast('Failed to load exp table', err), console.error('Failed to load exp table', err)]);
+                    .catch((err) => [
+                        toast('Failed to load exp table', err),
+                        console.error('Failed to load exp table', err)
+                    ]);
 
                 setIsLoadingPlayer(false);
             } else {
@@ -110,7 +128,9 @@ export const GameInterface = () => {
             toast('Welcome to Fantasy RPG !!!');
         } catch (error) {
             toast(`Failed to create character: ${getErrorMessage(error)}`);
-            console.error(`Failed to create character: ${getErrorMessage(error)}`);
+            console.error(
+                `Failed to create character: ${getErrorMessage(error)}`
+            );
         }
     };
 
@@ -182,12 +202,15 @@ export const GameInterface = () => {
 
     const buyPotionClick = async (playerData: PlayerData) => {
         try {
+            setIsBuying(true);
             const updated = await buyPotion(playerData);
             setPlayerData(updated);
             toast('Buy potion success.');
+            setIsBuying(false);
         } catch (err) {
             toast(`Buy potion failed: ${getErrorMessage(err)}`);
             console.error(`Buy potion failed: ${getErrorMessage(err)}`);
+            setIsBuying(false);
         }
     };
 
@@ -225,9 +248,9 @@ export const GameInterface = () => {
         );
     }
 
-    if (showClassSelection) {
+    if (!showClassSelection) {
         return (
-            <div className='min-h-screen bg-black text-white p-6'>
+            <div className='min-h-screen bg-background text-white p-6'>
                 {isLoading && (
                     <div className='absolute p-0 m-0 min-w-screen min-h-screen bg-black/80 flex items-center justify-center'>
                         <div className='text-center'>
@@ -237,55 +260,127 @@ export const GameInterface = () => {
                     </div>
                 )}
                 <div className='max-w-2xl mx-auto'>
-                    <div className='flex justify-between items-center mb-8'>
-                        
-
-            <button onClick={() => createCollectionCharacter()} className='z-100'>createCollectionCharacter</button>
-                        <h1 className='text-3xl font-bold'>Fantasy RPG</h1>
-                        <WalletMultiButton className='!bg-white !text-black hover:!bg-gray-200' />
-                    </div>
-
-                    <div className='bg-gray-900 rounded-lg p-8 text-center'>
-                        <h2 className='text-2xl font-semibold mb-6'>
-                            Choose Your Class
-                        </h2>
-                        <p className='text-gray-400 mb-8'>
-                            Select a character class to begin your adventure.
-                            This will create an NFT on Solana representing your
-                            character.
-                        </p>
-
-                        <div className='grid grid-cols-2 gap-4'>
-                            {CHARACTER_CLASSES.map((className, index) => (
-                                <div
-                                    key={className + index}
-                                    className='flex flex-col space-y-2'
-                                >
-                                    <img
-                                        src={`/class/class-${className.toLowerCase()}.png`}
-                                        alt={className}
-                                        draggable={false}
-                                        className='w-full'
-                                    />
-                                    <button
-                                        key={className}
-                                        onClick={() =>
-                                            createCharacter(className)
-                                        }
-                                        disabled={isLoading}
-                                        className='cursor-pointer bg-white text-black hover:bg-gray-200 disabled:bg-gray-600 disabled:text-gray-400 font-semibold py-2 md:py-4 px-6 rounded-lg transition-colors'
-                                    >
-                                        {className}
-                                    </button>
-                                </div>
-                            ))}
+                    <div className='flex justify-between items-center mb-6'>
+                        <h1 className='text-foreground text-3xl font-bold'>
+                            Fantasy RPG
+                        </h1>
+                        <div className='flex items-center gap-2'>
+                            <ThemeToggle />
+                            <WalletMultiButton className='!bg-white !text-black hover:!bg-gray-200' />
                         </div>
-
-                        <p className='text-xs text-gray-500 mt-6'>
-                            ⚠️ Creating a character requires a small SOL
-                            transaction fee
-                        </p>
                     </div>
+
+                    <Card>
+                        <CardContent>
+                            <h2 className='text-2xl font-semibold mb-4 text-foreground'>
+                                Choose Your Class
+                                <AlertDialog
+                                    open={!!selectedClass}
+                                    onOpenChange={() => setSelectedClass(null)}
+                                >
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>
+                                                Confirm Class Creation
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Are you sure you want to create
+                                                a{' '}
+                                                <span className='font-bold text-primary'>
+                                                    {selectedClass}
+                                                </span>{' '}
+                                                character? This action will mint
+                                                an NFT and cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel asChild>
+                                                <Button
+                                                    variant='outline'
+                                                    onClick={() =>
+                                                        setSelectedClass(null)
+                                                    }
+                                                    className='cursor-pointer'
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </AlertDialogCancel>
+                                            <AlertDialogAction asChild>
+                                                <Button
+                                                    onClick={async () => {
+                                                        if (selectedClass) {
+                                                            await createCharacter(
+                                                                selectedClass
+                                                            );
+                                                            setSelectedClass(
+                                                                null
+                                                            );
+                                                        }
+                                                    }}
+                                                    className='cursor-pointer'
+                                                >
+                                                    Confirm
+                                                </Button>
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </h2>
+                            <p className='text-muted-foreground mb-6'>
+                                Select a character class to begin your
+                                adventure. This will create an NFT on Solana
+                                representing your character.
+                            </p>
+
+                            <div className='grid grid-cols-2 gap-4'>
+                                {CHARACTER_CLASSES.map((className, index) => (
+                                    <div
+                                        key={className + index}
+                                        className='flex flex-col space-y-2'
+                                    >
+                                        <div className='relative'>
+                                            <img
+                                                src={`/class/class-${className.toLowerCase()}.png`}
+                                                alt={className}
+                                                draggable={false}
+                                                className='w-full'
+                                            />
+                                            <div className='absolute flex text-end flex-col top-0 right-0 bg-background rounded-bl-lg px-4 py-2'>
+                                                {Object.entries(
+                                                    DEFAULT_CHARACTER_STATS[
+                                                        className
+                                                    ]
+                                                ).map(([key, value]) => (
+                                                    <p key={key}>
+                                                        {key.toUpperCase()}:{' '}
+                                                        <span className='font-bold text-orange-500'>
+                                                            {value}
+                                                        </span>
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <Button
+                                            key={className}
+                                            onClick={() =>
+                                                setSelectedClass(className)
+                                            }
+                                            variant='default'
+                                            disabled={isLoading}
+                                            className='cursor-pointer font-semibold py-6'
+                                        >
+                                            {className}
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <p className='text-xs text-muted-foreground mt-6 text-center'>
+                                ⚠️ Creating a character requires a small SOL
+                                transaction fee
+                            </p>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         );
@@ -329,15 +424,30 @@ export const GameInterface = () => {
     const IconMonster = (monster: Monster) => {
         switch (monster) {
             case 'Slime':
-                return <Bug size={20} className='text-green-400' />;
+                return (
+                    <Bug
+                        size={20}
+                        className='text-green-600 dark:text-green-400'
+                    />
+                );
             case 'Goblin':
-                return <Ghost size={20} className='text-lime-500' />;
+                return (
+                    <Ghost
+                        size={20}
+                        className='text-lime-700 dark:text-lime-500'
+                    />
+                );
             case 'Orc':
                 return <Skull size={20} className='text-red-500' />;
             case 'Wolf':
-                return <PawPrint size={20} className='text-gray-400' />;
+                return (
+                    <PawPrint
+                        size={20}
+                        className='text-gray-600 dark:text-gray-400'
+                    />
+                );
             default:
-                return <Skull size={20} className='text-white' />;
+                return <Skull size={20} className='text-foreground' />;
         }
     };
 
@@ -365,9 +475,9 @@ export const GameInterface = () => {
         expRange > 0 ? Math.floor((expIntoLevel / expRange) * 100) : 0;
 
     return (
-        <div className='min-h-screen bg-gradient-to-tr from-[#130000] to-[#060014] text-white'>
+        <div className='min-h-screen bg-muted text-foreground'>
             {/* Header */}
-            <div className='flex sticky top-0 justify-between items-center mb-4 bg-gradient-to-b from-[#210035] to-[#16004b] px-4 md:px-6 lg:px-10 py-2'>
+            <div className='flex sticky top-0 justify-between items-center mb-4 bg-background/50 backdrop-blur-md border-b border-border px-4 md:px-6 lg:px-10 py-2'>
                 <div className='flex items-center gap-1 md:gap-2'>
                     <img
                         src={'/favicon.ico'}
@@ -379,296 +489,328 @@ export const GameInterface = () => {
                         Fantasy RPG
                     </h1>
                 </div>
-                <WalletMultiButton className='!bg-white !text-black hover:!bg-gray-200' />
+                <div className='flex items-center gap-2'>
+                    <ThemeToggle />
+                    <WalletMultiButton className='!bg-white !text-black hover:!bg-gray-200' />
+                </div>
             </div>
             <div className='max-w-4xl mx-auto pt-0 p-4 md:p-6'>
                 {/* Asset Address Display */}
                 {playerAssetAddress && (
-                    <div className='flex flex-col bg-gray-900 rounded-lg p-4 mb-6 items-center gap-4'>
-                        <div className='flex w-full gap-4 justify-center'>
-                            <img
-                                src={`/class/class-${playerData.class.toLowerCase()}.png`}
-                                alt={playerData.class}
-                                draggable={false}
-                                className='w-[120px] h-[120px] rounded-full'
-                            />
-                            <div className='flex flex-col justify-center gap-1'>
-                                <div className='flex justify-between items-end gap-2'>
-                                    <h2 className='text-xl font-semibold flex items-center text-yellow-400'>
-                                        {playerData.class}
-                                    </h2>
-                                    <h2 className='text-xl font-semibold'>
-                                        LV{' '}
-                                        <span className='text-green-400'>
-                                            {currentLevel}
+                    <Card className='flex flex-col bg-gradient-to-tr to-[#d3d3d3] dark:to-[#3a0d14] from-background p-4 mb-6 items-center gap-4'>
+                        <Card className='w-full'>
+                            <CardContent className='flex flex-col sm:flex-row gap-6 px-6 items-center sm:items-start justify-center'>
+                                <img
+                                    src={`/class/class-${playerData.class.toLowerCase()}.png`}
+                                    alt={playerData.class}
+                                    draggable={false}
+                                    className='w-32 h-32 rounded-full'
+                                />
+                                <div className='flex flex-col gap-1 w-full max-w-md'>
+                                    <div className='flex justify-between items-end gap-2'>
+                                        <h2 className='text-xl font-semibold text-orange-600 dark:text-yellow-400'>
+                                            {playerData.class}
+                                        </h2>
+                                        <h2 className='text-xl font-semibold'>
+                                            LV{' '}
+                                            <span className='text-green-600 dark:text-green-400'>
+                                                {currentLevel}
+                                            </span>
+                                        </h2>
+                                    </div>
+                                    <p>
+                                        HP:{' '}
+                                        <span className='text-red-400'>
+                                            {playerData.hp || 100}/100
                                         </span>
-                                    </h2>
-                                </div>
-                                <p>
-                                    HP:{' '}
-                                    <span className='text-red-400'>
-                                        {playerData.hp || 100}/100
-                                    </span>
-                                </p>
-                                <div className='bg-gray-700 rounded-full h-2 mb-2'>
-                                    <div
-                                        className='bg-red-500 h-2 rounded-full transition-all duration-100'
-                                        style={{ width: `${playerData.hp}%` }}
-                                    ></div>
-                                </div>
-                                <p>
-                                    EXP:{' '}
-                                    <span className='text-yellow-400'>
-                                        {playerData.exp || 0}/{nextLevelExp}
-                                    </span>
-                                </p>
-                                <div className='bg-gray-700 rounded-full h-2 mb-2'>
-                                    <div
-                                        className='bg-yellow-500 h-2 rounded-full transition-all duration-100'
-                                        style={{ width: `${expPercent}%` }}
-                                    ></div>
-                                </div>
-                                <p className='text-xs text-gray-400'>
-                                    Character NFT Address:
-                                </p>
-                                <div className='flex items-center gap-2'>
-                                    <p className='text-sm font-mono text-white'>
-                                        {`${playerAssetAddress.slice(0, 5)}.....${playerAssetAddress.slice(-5)}`}
                                     </p>
-                                    <TooltipWrapper message='Detail on Solscan'>
-                                        <a
-                                            href={`https://solscan.io/token/${playerAssetAddress}?cluster=devnet`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                            className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
-                                        >
-                                            <SearchCheck size={14} />
-                                        </a>
-                                    </TooltipWrapper>
-                                    <TooltipWrapper message='Detail on Metaplex'>
-                                        <a
-                                            href={`https://core.metaplex.com/explorer/${playerAssetAddress}?env=devnet`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                            className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
-                                        >
-                                            <ExternalLink size={14} />
-                                        </a>
-                                    </TooltipWrapper>
-                                </div>
-                            </div>
-                        </div>
-                        <div className='w-full h-[1px] bg-border' />
-                        {/* Character Stats Section */}
-                        <div className='w-full bg-gray-800 rounded p-4 pb-2 space-y-1 text-sm'>
-                            <div className='grid grid-cols-4 gap-4'>
-                                {Object.entries(getComputedStats()).map(
-                                    ([key, value]) => (
+                                    <div className='bg-muted rounded-full h-2 mb-1 w-full'>
                                         <div
-                                            key={key}
-                                            className='flex flex-col bg-gradient-to-b from-[#3b0101] border border-black to-[#110d0d] rounded text-center items-center justify-center py-4'
-                                        >
-                                            <span className='text-[#e2e2e2]'>
-                                                {key.toUpperCase()}
-                                            </span>
-                                            <span className='text-xl font-bold'>
-                                                {value}
-                                            </span>
-                                        </div>
-                                    )
-                                )}
-                            </div>
-                            <p className='text-muted-foreground text-center'>
-                                Status values are allocated according to class
-                                and increase by +1 at every level.
-                            </p>
-                        </div>
-                        <div className='w-full h-[1px] bg-border' />
-                        <div className='grid grid-cols-2 gap-4'>
-                            <TooltipWrapper message='Get Kill count from "Attack Monster"'>
-                                <div className='flex items-center'>
-                                    <Skull
-                                        className='mr-2 text-yellow-500'
-                                        size={20}
-                                    />
-                                    <span>Killed: {playerData.killed}</span>
+                                            className='bg-red-500 h-2 rounded-full transition-all duration-100'
+                                            style={{
+                                                width: `${playerData.hp}%`
+                                            }}
+                                        ></div>
+                                    </div>
+                                    <p>
+                                        EXP:{' '}
+                                        <span className='text-orange-600 dark:text-yellow-400'>
+                                            {playerData.exp || 0}/{nextLevelExp}
+                                        </span>
+                                    </p>
+                                    <div className='bg-muted rounded-full h-2 mb-1 w-full'>
+                                        <div
+                                            className='bg-yellow-500 dark:bg-yellow-400 h-2 rounded-full transition-all duration-100'
+                                            style={{ width: `${expPercent}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className='grid grid-cols-2 gap-4 mt-1'>
+                                        <TooltipWrapper message='Get Kill count from "Attack Monster"'>
+                                            <div className='flex items-center'>
+                                                <Skull
+                                                    className='mr-2 text-orange-600 dark:text-yellow-500'
+                                                    size={20}
+                                                />
+                                                <span>
+                                                    Killed: {playerData.killed}
+                                                </span>
+                                            </div>
+                                        </TooltipWrapper>
+                                        <TooltipWrapper message='Earn from "Attack Monster"'>
+                                            <div className='flex items-center'>
+                                                <Coins
+                                                    className='mr-2 text-orange-600 dark:text-yellow-500'
+                                                    size={20}
+                                                />
+                                                <span>
+                                                    Gold: {playerData.gold}
+                                                </span>
+                                            </div>
+                                        </TooltipWrapper>
+                                    </div>
+                                    <p className='text-xs text-muted-foreground mt-2'>
+                                        Character NFT Address:
+                                    </p>
+                                    <div className='flex items-center gap-2 flex-wrap'>
+                                        <p className='text-sm font-mono text-foreground'>
+                                            {`${playerAssetAddress.slice(0, 5)}.....${playerAssetAddress.slice(-5)}`}
+                                        </p>
+                                        <TooltipWrapper message='Detail on Solscan'>
+                                            <a
+                                                href={`https://solscan.io/token/${playerAssetAddress}?cluster=devnet`}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                                className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
+                                            >
+                                                <SearchCheck size={14} />
+                                            </a>
+                                        </TooltipWrapper>
+                                        <TooltipWrapper message='Detail on Metaplex'>
+                                            <a
+                                                href={`https://core.metaplex.com/explorer/${playerAssetAddress}?env=devnet`}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                                className='flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded transition'
+                                            >
+                                                <ExternalLink size={14} />
+                                            </a>
+                                        </TooltipWrapper>
+                                    </div>
                                 </div>
-                            </TooltipWrapper>
-                            <TooltipWrapper message='Earn from "Attack Monster"'>
-                                <div className='flex items-center'>
-                                    <Coins
-                                        className='mr-2 text-yellow-500'
-                                        size={20}
-                                    />
-                                    <span>Gold: {playerData.gold}</span>
+                            </CardContent>
+                        </Card>
+
+                        {/* Character Stats Section */}
+                        <Card className='px-0 sm:px-2 py-4 pb-2 space-y-1 text-sm'>
+                            <CardContent className='space-y-2'>
+                                <div className='grid grid-cols-4 gap-2 sm:gap-4'>
+                                    {Object.entries(getComputedStats()).map(
+                                        ([key, value]) => (
+                                            <div
+                                                key={key}
+                                                className='flex flex-col bg-gradient-to-b from-background to-muted border border-border rounded text-center items-center justify-center py-4'
+                                            >
+                                                <span className='text-muted-foreground'>
+                                                    {key.toUpperCase()}
+                                                </span>
+                                                <span className='text-xl font-bold text-foreground'>
+                                                    {value}
+                                                </span>
+                                            </div>
+                                        )
+                                    )}
                                 </div>
-                            </TooltipWrapper>
-                        </div>
+                                <p className='text-muted-foreground text-center'>
+                                    Status values are allocated according to
+                                    class and increase by +1 at every level.
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Separator />
+
                         <Link
                             to='/leaderboard'
                             className='w-full text-center bg-yellow-400 text-black font-bold py-2 px-4 rounded hover:bg-yellow-300 transition'
                         >
                             🏆 View Leaderboard
                         </Link>
-                    </div>
+                    </Card>
                 )}
 
                 {/* Shop Section */}
-                <div className='bg-gray-900 rounded-lg p-6 mb-6'>
-                    <h3 className='text-lg font-semibold mb-4 flex items-center'>
-                        <ShoppingCart className='mr-2' size={20} />
-                        Shop
-                    </h3>
+                <Card className='mb-6'>
+                    <CardContent>
+                        <h3 className='text-lg font-semibold flex items-center mb-4'>
+                            <ShoppingCart className='mr-2' size={20} />
+                            Shop
+                        </h3>
 
-                    <div className='flex justify-evenly items-center'>
-                        <div className='flex flex-col items-center justify-center space-y-2'>
-                            <img
-                                src='/assets/shop/potion.webp'
-                                alt='Potion'
-                                draggable={false}
-                                className='w-[60px] h-[60px] md:w-[120px] md:h-[120px] rounded-full'
-                            />
-                            <p className='text-center whitespace-pre-wrap'>
-                                Potion (HP+10)
-                            </p>
-                            <TooltipWrapper message='Buy Potion'>
-                                <button
-                                    onClick={() => buyPotionClick(playerData)}
-                                    className='cursor-pointer bg-black hover:bg-[#131313] rounded px-4 py-1'
-                                >
-                                    <div className='flex items-center gap-2'>
-                                        <span>10</span>
-                                        <Coins
-                                            className='text-yellow-500'
-                                            size={18}
-                                        />
-                                    </div>
-                                </button>
-                            </TooltipWrapper>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Attack Section */}
-                <div className='bg-gray-900 rounded-lg p-6 mb-6'>
-                    <h3 className='text-lg font-semibold mb-4 flex items-center'>
-                        <Axe className='mr-2' size={20} />
-                        Combat
-                        <TooltipWrapper message='Attack monster for earn Gold & Exp'>
-                            <Info
-                                size={20}
-                                className='ml-2 text-muted-foreground hover:text-foreground'
-                            />
-                        </TooltipWrapper>
-                    </h3>
-
-                    {isAttacking ? (
-                        <div className='mb-4'>
-                            <div className='bg-gray-700 rounded-full h-4 mb-2'>
-                                <div
-                                    className='bg-white h-4 rounded-full transition-all duration-100'
-                                    style={{ width: `${attackProgress}%` }}
-                                ></div>
+                        <div className='flex justify-evenly items-center'>
+                            <div className='flex flex-col items-center justify-center space-y-2'>
+                                <img
+                                    src='/assets/shop/potion.webp'
+                                    alt='Potion'
+                                    draggable={false}
+                                    className='w-[80px] h-[80px] md:w-[120px] md:h-[120px] rounded-full'
+                                />
+                                <p className='text-center whitespace-pre-wrap'>
+                                    Potion (HP+10)
+                                </p>
+                                <TooltipWrapper message='Buy Potion'>
+                                    <Button
+                                        onClick={() =>
+                                            buyPotionClick(playerData)
+                                        }
+                                        variant={'default'}
+                                        className='cursor-pointer'
+                                        disabled={isBuying}
+                                    >
+                                        <div className='flex items-center gap-2'>
+                                            {isBuying ? (
+                                                <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white' />
+                                            ) : (
+                                                <>
+                                                    <span>10</span>
+                                                    <Coins
+                                                        className='text-yellow-500 dark:text-orange-500'
+                                                        size={18}
+                                                    />
+                                                </>
+                                            )}
+                                        </div>
+                                    </Button>
+                                </TooltipWrapper>
                             </div>
                         </div>
-                    ) : (
-                        <div className='bg-gray-800 rounded-full h-4 mb-4' />
-                    )}
+                    </CardContent>
+                </Card>
 
-                    <button
-                        onClick={attack}
-                        disabled={isAttacking}
-                        className={`w-full flex items-center justify-center gap-2 font-bold py-3 px-6 rounded-lg transition-colors
+                {/* Attack Section */}
+                <Card className='mb-6'>
+                    <CardContent>
+                        <h3 className='text-lg font-semibold flex items-center mb-4'>
+                            <Axe className='mr-2' size={20} />
+                            Combat
+                            <TooltipWrapper message='Attack monster for earn Gold & Exp'>
+                                <Info
+                                    size={20}
+                                    className='ml-2 text-muted-foreground hover:text-foreground'
+                                />
+                            </TooltipWrapper>
+                        </h3>
+
+                        {isAttacking ? (
+                            <div className='mb-4'>
+                                <div className='bg-muted rounded-full h-4 mb-2'>
+                                    <div
+                                        className='bg-gradient-to-r from-primary/30 to-primary h-4 rounded-full transition-all duration-100'
+                                        style={{ width: `${attackProgress}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className='bg-muted rounded-full h-4 mb-4' />
+                        )}
+
+                        <Button
+                            onClick={attack}
+                            disabled={isAttacking}
+                            className={`w-full flex items-center justify-center gap-2 font-bold p-6 rounded-lg transition-colors
                             ${
                                 isAttacking
-                                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
                                     : 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
                             }
                         `}
-                    >
-                        {isAttacking ? (
-                            <>
-                                <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white' />
-                                Attacking... {Math.round(attackProgress)}%
-                            </>
-                        ) : (
-                            <>🗡️ Attack Monster</>
-                        )}
-                    </button>
+                        >
+                            {isAttacking ? (
+                                <>
+                                    <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white' />
+                                    Attacking... {Math.round(attackProgress)}%
+                                </>
+                            ) : (
+                                <>🗡️ Attack Monster</>
+                            )}
+                        </Button>
 
-                    <p className='text-xs text-muted-foreground mt-2 text-center'>
-                        Each attack updates your character NFT on-chain
-                    </p>
-                    <p className='text-xs text-muted-foreground mt-2 text-center'>
-                        (random monster: Slime, Goblin, Orc, Wolf)
-                    </p>
-                </div>
+                        <p className='text-xs text-muted-foreground mt-2 text-center'>
+                            Each attack updates your character NFT on-chain
+                        </p>
+                        <p className='text-xs text-muted-foreground mt-2 text-center'>
+                            (random monster: Slime, Goblin, Orc, Wolf)
+                        </p>
+                    </CardContent>
+                </Card>
 
                 {/* Battle Log */}
-                <div className='bg-gray-900 rounded-lg p-6'>
-                    <h3 className='text-lg font-semibold mb-4 flex items-center'>
-                        <Scroll className='mr-2' size={20} />
-                        Battle Log
-                    </h3>
+                <Card>
+                    <CardContent>
+                        <h3 className='text-lg font-semibold flex items-center'>
+                            <Scroll className='mr-2' size={20} />
+                            Battle Log
+                        </h3>
 
-                    <div className='max-h-64 overflow-y-auto space-y-2'>
-                        {battleLogs.length === 0 ? (
-                            <p className='text-muted-foreground text-center py-4'>
-                                No battles yet. Start attacking to see your
-                                victories!
-                            </p>
-                        ) : (
-                            battleLogs.map((log) => (
-                                <div
-                                    key={log.id}
-                                    className='bg-gray-800 rounded p-3'
-                                >
-                                    <div className='flex items-center gap-1'>
-                                        {IconMonster(log.monster as Monster)}
-                                        <p className='text-green-400'>
-                                            You defeated a{' '}
-                                            <span className='font-semibold text-white'>
-                                                {log.monster}
-                                            </span>{' '}
-                                            and earned{' '}
-                                            <span className='font-semibold text-yellow-400'>
-                                                {log.goldEarned || 0} gold &{' '}
-                                                {log.expEarned || 0} Exp
+                        <div className='max-h-64 overflow-y-auto space-y-2'>
+                            {battleLogs.length === 0 ? (
+                                <p className='text-muted-foreground text-center py-4'>
+                                    No battles yet. Start attacking to see your
+                                    victories!
+                                </p>
+                            ) : (
+                                battleLogs.map((log) => (
+                                    <Card
+                                        key={log.id}
+                                        className='bg-muted rounded-lg p-3 mt-4'
+                                    >
+                                        <div className='flex items-center gap-1'>
+                                            {IconMonster(
+                                                log.monster as Monster
+                                            )}
+                                            <p className='text-green-700 dark:text-green-400'>
+                                                You defeated a{' '}
+                                                <span className='font-semibold text-foreground'>
+                                                    {log.monster}
+                                                </span>{' '}
+                                                and earned{' '}
+                                                <span className='font-semibold text-orange-600 dark:text-yellow-400'>
+                                                    {log.goldEarned || 0} gold &{' '}
+                                                    {log.expEarned || 0} Exp
+                                                </span>
+                                                .
+                                            </p>
+                                        </div>
+                                        <div className='text-xs text-muted-foreground mt-1 flex justify-between items-center'>
+                                            <span className='text-muted-foreground'>
+                                                {new Date(
+                                                    log.timestamp
+                                                ).toLocaleTimeString()}
                                             </span>
-                                            .
-                                        </p>
-                                    </div>
-                                    <div className='text-xs text-muted-foreground mt-1 flex justify-between items-center'>
-                                        <span>
-                                            {new Date(
-                                                log.timestamp
-                                            ).toLocaleTimeString()}
-                                        </span>
-                                        <TooltipWrapper message='View Tx (Solscan)'>
-                                            <a
-                                                href={`https://solscan.io/tx/${log.txSignature}?cluster=devnet`}
-                                                target='_blank'
-                                                rel='noopener noreferrer'
-                                                className='text-blue-400 hover:underline ml-2'
-                                            >
-                                                View Tx
-                                            </a>
-                                        </TooltipWrapper>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
+                                            <TooltipWrapper message='View Tx (Solscan)'>
+                                                <a
+                                                    href={`https://solscan.io/tx/${log.txSignature}?cluster=devnet`}
+                                                    target='_blank'
+                                                    rel='noopener noreferrer'
+                                                    className='text-blue-600 dark:text-blue-400 hover:underline ml-2'
+                                                >
+                                                    View Tx
+                                                </a>
+                                            </TooltipWrapper>
+                                        </div>
+                                    </Card>
+                                ))
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
             {/* Footer */}
-            <footer className='w-full bg-black text-gray-400 text-center text-sm py-4 mt-8'>
+            <footer className='w-full bg-background text-muted-foreground text-center text-sm py-4 mt-8'>
                 Created by{' '}
                 <a
                     href='https://github.com/guysuvijak'
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='underline text-white font-semibold'
+                    className='underline hover:text-primary font-semibold'
                 >
                     MeteorVIIx
                 </a>{' '}
@@ -677,7 +819,7 @@ export const GameInterface = () => {
                     href='https://aimpact.dev'
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='underline hover:text-white'
+                    className='underline hover:text-primary'
                 >
                     impact.dev
                 </a>{' '}
@@ -686,7 +828,7 @@ export const GameInterface = () => {
                     href='https://github.com/guysuvijak/solana-fantasy-rpg'
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='underline hover:text-white'
+                    className='underline hover:text-primary'
                 >
                     Github Repo
                 </a>
