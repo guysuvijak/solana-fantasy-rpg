@@ -725,7 +725,7 @@ export const GameInterface = () => {
                         >
                             {isAttacking ? (
                                 <>
-                                    <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white' />
+                                    <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-black dark:border-white' />
                                     Attacking... {Math.round(attackProgress)}%
                                 </>
                             ) : (
