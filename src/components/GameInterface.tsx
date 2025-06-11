@@ -248,7 +248,7 @@ export const GameInterface = () => {
         );
     }
 
-    if (!showClassSelection) {
+    if (showClassSelection) {
         return (
             <div className='min-h-screen bg-background text-white p-6'>
                 {isLoading && (
